@@ -1,0 +1,400 @@
+{
+  "info": {
+    "_postman_id": "c1544b74-8f0d-4d8c-9ea2-14d9d5bf9c5e",
+    "name": "DG Interns Hub Week 8 API",
+    "description": "API verification collection. Register/login candidate first; set recruiterToken in the active environment to a JWT for a recruiter account promoted through trusted database administration.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "candidateToken", "value": "" },
+    { "key": "recruiterToken", "value": "" },
+    { "key": "candidateEmail", "value": "" },
+    { "key": "jobId", "value": "" },
+    { "key": "applicationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register candidate",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('candidateEmail')) {",
+                  "  pm.collectionVariables.set('candidateEmail', `week8-${Date.now()}@example.com`);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registration succeeds', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.token) pm.collectionVariables.set('candidateToken', body.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Week 8 Candidate\",\n  \"email\": \"{{candidateEmail}}\",\n  \"password\": \"SecurePass123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Login candidate",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Login succeeds', () => pm.response.to.have.status(200));",
+                "const body = pm.response.json();",
+                "if (body.data && body.data.token) pm.collectionVariables.set('candidateToken', body.data.token);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{candidateEmail}}\",\n  \"password\": \"SecurePass123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Duplicate registration rejected",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Duplicate email returns 409', () => pm.response.to.have.status(409));"]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Duplicate Candidate\",\n  \"email\": \"{{candidateEmail}}\",\n  \"password\": \"SecurePass123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Invalid login rejected",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Invalid credentials return 401', () => pm.response.to.have.status(401));"]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{candidateEmail}}\",\n  \"password\": \"WrongPassword123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        },
+        {
+          "name": "Missing token rejected",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Missing token returns 401', () => pm.response.to.have.status(401));"]
+            }
+          }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/users/profile" }
+        },
+        {
+          "name": "Invalid token rejected",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Invalid token returns 401', () => pm.response.to.have.status(401));"]
+            }
+          }],
+          "request": {
+            "header": [{ "key": "Authorization", "value": "Bearer invalid.token.value" }],
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users/profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users/profile"
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Week 8 API tester\",\n  \"skills\": [\"JavaScript\", \"REST APIs\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/users/profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Create job (recruiter)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Job created', () => pm.response.to.have.status(201));",
+                "const body = pm.response.json();",
+                "if (body.data && body.data.job) pm.collectionVariables.set('jobId', body.data.job._id);"
+              ]
+            }
+          }],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{recruiterToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Week 8 Frontend Intern\",\n  \"company\": \"DG Demo Company\",\n  \"description\": \"Build accessible React interfaces.\",\n  \"location\": \"Remote\",\n  \"type\": \"internship\",\n  \"skills\": [\"React\", \"JavaScript\"],\n  \"deadline\": \"2027-12-31T23:59:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/jobs"
+          }
+        },
+        {
+          "name": "Candidate cannot create job",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Wrong role returns 403', () => pm.response.to.have.status(403));"]
+            }
+          }],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Forbidden job\",\n  \"company\": \"Example\",\n  \"description\": \"Not allowed.\",\n  \"location\": \"Remote\",\n  \"type\": \"internship\",\n  \"deadline\": \"2027-12-31T23:59:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/jobs"
+          }
+        },
+        {
+          "name": "List jobs",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/jobs?page=1&limit=10&sort=newest" }
+        },
+        {
+          "name": "Search, filter, and paginate jobs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/jobs?search=react&type=internship&location=remote&skill=javascript&page=1&limit=10&sort=deadline"
+          }
+        },
+        {
+          "name": "Get single job",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/jobs/{{jobId}}" }
+        },
+        {
+          "name": "Update job (recruiter)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{recruiterToken}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Week 8 Senior Frontend Intern\",\n  \"company\": \"DG Demo Company\",\n  \"description\": \"Build accessible React interfaces and test them.\",\n  \"location\": \"Remote\",\n  \"type\": \"internship\",\n  \"skills\": [\"React\", \"JavaScript\"],\n  \"deadline\": \"2027-12-31T23:59:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Apply to job (candidate)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Application created', () => pm.response.to.have.status(201));",
+                "const body = pm.response.json();",
+                "if (body.data && body.data.application) pm.collectionVariables.set('applicationId', body.data.application._id);"
+              ]
+            }
+          }],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobId\": \"{{jobId}}\",\n  \"coverLetter\": \"I am excited to apply.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/applications"
+          }
+        },
+        {
+          "name": "My applications (candidate)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/applications/my"
+          }
+        },
+        {
+          "name": "Get application",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}"
+          }
+        },
+        {
+          "name": "Update status (recruiter)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{recruiterToken}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"shortlisted\"\n}" },
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}/status"
+          }
+        },
+        {
+          "name": "Delete application (candidate)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Validation and cleanup",
+      "item": [
+        {
+          "name": "Invalid job input rejected",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Invalid input returns 400', () => pm.response.to.have.status(400));"]
+            }
+          }],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{recruiterToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"\"\n}" },
+            "url": "{{baseUrl}}/api/jobs"
+          }
+        },
+        {
+          "name": "Delete job (recruiter)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{recruiterToken}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/jobs/{{jobId}}"
+          }
+        },
+        {
+          "name": "Logout candidate",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{candidateToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/logout"
+          }
+        }
+      ]
+    }
+  ]
+}
